@@ -14,6 +14,23 @@ EXPECTED_BYTES = 92
 EXPECTED_SHA256 = "9c3cefac29d242d4dc6d3ec227d56f46f5c4f782e211f6443702862442249444"
 
 
+def verify(path, data):
+    """Read back the written file and verify it byte-for-byte."""
+    with open(path, "rb") as f:
+        written = f.read()
+    if len(written) != EXPECTED_BYTES:
+        print(f"verify fail: {len(written)} bytes on disk, expected {EXPECTED_BYTES}", file=sys.stderr)
+        return False
+    digest = hashlib.sha256(written).hexdigest()
+    if digest != EXPECTED_SHA256:
+        print(f"verify fail: sha256 {digest} != {EXPECTED_SHA256}", file=sys.stderr)
+        return False
+    if written != data:
+        print("verify fail: bytes on disk differ from the pinned entry", file=sys.stderr)
+        return False
+    return True
+
+
 def main():
     text = JOKE
     data = text.encode("utf-8")
@@ -28,8 +45,11 @@ def main():
         print(f"sha256 mismatch: {digest}", file=sys.stderr)
         return 1
     os.makedirs("/output", exist_ok=True)
-    with open("/output/entry.txt", "wb") as f:
+    path = "/output/entry.txt"
+    with open(path, "wb") as f:
         f.write(data)
+    if not verify(path, data):
+        raise SystemExit("verification failed: written file does not match")
     print(f"wrote /output/entry.txt: {len(data)} bytes, sha256 {digest}")
     return 0
 
